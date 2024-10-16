@@ -1,12 +1,8 @@
-import argparse
-import os
-import requests
+from weread2notionpro.notion_helper import NotionHelper
+from weread2notionpro.weread_api import WeReadApi
 
-from notion_helper import NotionHelper
-from weread_api import WeReadApi
-
-from utils import (
-    get_callout,
+from weread2notionpro.utils import (
+    get_block,
     get_heading,
     get_number,
     get_number_from_result,
@@ -168,6 +164,8 @@ def append_blocks(id, contents):
             l.extend(results)
             blocks.clear()
             sub_contents.clear()
+            if not notion_helper.sync_bookmark and content.get("type")==0:
+                continue
             blocks.append(content_to_block(content))
             sub_contents.append(content)
         elif "blockId" in content:
@@ -179,6 +177,8 @@ def append_blocks(id, contents):
                 sub_contents.clear()
             before_block_id = content["blockId"]
         else:
+            if not notion_helper.sync_bookmark and content.get("type")==0:
+                continue
             blocks.append(content_to_block(content))
             sub_contents.append(content)
     
@@ -196,15 +196,19 @@ def append_blocks(id, contents):
 
 def content_to_block(content):
     if "bookmarkId" in content:
-        return get_callout(
+        return get_block(
             content.get("markText",""),
+            notion_helper.block_type,
+            notion_helper.show_color,
             content.get("style"),
             content.get("colorStyle"),
             content.get("reviewId"),
         )
     elif "reviewId" in content:
-        return get_callout(
+        return get_block(
             content.get("content",""),
+            notion_helper.block_type,
+            notion_helper.show_color,
             content.get("style"),
             content.get("colorStyle"),
             content.get("reviewId"),
@@ -229,14 +233,9 @@ def append_blocks_to_notion(id, blocks, after, contents):
         l.append(content)
     return l
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    options = parser.parse_args()
-    branch = os.getenv("REF").split("/")[-1]
-    repository =  os.getenv("REPOSITORY")
-    weread_api = WeReadApi()
-    notion_helper = NotionHelper()
+weread_api = WeReadApi()
+notion_helper = NotionHelper()
+def main():
     notion_books = notion_helper.get_all_book()
     books = weread_api.get_notebooklist()
     if books != None:
@@ -260,3 +259,7 @@ if __name__ == "__main__":
                 "Sort":get_number(sort)
             }
             notion_helper.update_book_page(page_id=pageId,properties=properties)
+
+if __name__ == "__main__":
+    main()
+
